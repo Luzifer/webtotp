@@ -2,10 +2,10 @@ FROM golang:alpine as go
 
 RUN set -ex \
  && apk add git \
- && go get -v github.com/Luzifer/gziphttp
+ && go install github.com/Luzifer/gziphttp@latest
 
 
-FROM node:alpine as node
+FROM node:16-alpine as node
 
 COPY . /src
 WORKDIR /src
