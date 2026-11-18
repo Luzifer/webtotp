@@ -12,9 +12,9 @@ RUN <<-EOF
 EOF
 
 
-FROM node:26.13.1-alpine AS nodebuild
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS nodebuild
 
-COPY --from=ghcr.io/luzifer-docker/pnpm:v11.28.12 / /
+COPY --from=ghcr.io/luzifer-docker/pnpm:v11.28.12@sha256:7b75d9a690deed73409c45e95faf69c6e657440f10eb9b6a6ebcefc890edefc0 / /
 
 COPY . /src
 WORKDIR /src
