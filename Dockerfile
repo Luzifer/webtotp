@@ -1,24 +1,43 @@
-FROM golang:alpine as go
+FROM golang:1.27-alpine AS gobuild
 
-RUN set -ex \
- && apk add git \
- && go install github.com/Luzifer/gziphttp@latest
+ENV GOBIN=/rootfs/usr/bin
+
+RUN <<-EOF
+  set -ex
+  apk --no-cache add \
+    git
+
+  install -dm0755 ${GOBIN}
+  go install github.com/Luzifer/gziphttp@latest
+EOF
 
 
-FROM node:16-alpine as node
+FROM node:26.13.1-alpine AS nodebuild
+
+COPY --from=ghcr.io/luzifer-docker/pnpm:v11.28.12 / /
 
 COPY . /src
 WORKDIR /src
 
-RUN set -ex \
- && npm ci \
- && npm run build
+RUN <<-EOF
+  set -ex
+
+  apk --no-cache add \
+    make
+
+  make prod
+
+  install -Dm0644 -t /rootfs/usr/share/webtotp \
+    dist/*
+EOF
+
+COPY --from=gobuild /rootfs/ /rootfs/
 
 
-FROM alpine:latest
+FROM scratch AS final
 
-COPY --from=go    /go/bin/gziphttp  /usr/local/bin/
-COPY --from=node  /src/dist         /usr/local/share/webtotp
+COPY --from=nodebuild /rootfs/ /
 
-EXPOSE 3000/tcp
-CMD ["gziphttp", "-d", "/usr/local/share/webtotp"]
+USER 13337
+ENTRYPOINT ["/usr/bin/gziphttp"]
+CMD ["-d", "/usr/share/webtotp"]

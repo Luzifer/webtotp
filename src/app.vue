@@ -1,76 +1,151 @@
 <template>
   <div id="app">
+    <nav
+      class="navbar bg-primary-subtle"
+    >
+      <div class="container-fluid">
+        <a
+          class="navbar-brand"
+          href="#"
+          @click="blankSecret"
+        >
+          WebTOTP
+        </a>
+      </div>
+    </nav>
 
-    <b-navbar toggleable="lg" type="dark" variant="primary">
-      <b-navbar-brand href="#" @click="blankSecret">WebTOTP</b-navbar-brand>
-    </b-navbar>
+    <div class="container">
+      <div class="row justify-content-center mt-5">
+        <div class="col-12 col-md-6">
+          <div
+            v-if="code"
+            class="card"
+          >
+            <div class="card-header">
+              Your current code
+            </div>
 
-    <b-container>
-      <b-row class="justify-content-center mt-5">
-        <b-col cols="12" md="6">
-
-          <b-card header="Your code currently is..." v-if="code">
-            <b-card-text class="text-center">
-              <b-input
-                class="code text-center"
-                @click="copy($event)"
+            <div class="card-body text-center">
+              <input
+                v-tooltip
+                class="form-control code text-center"
                 readonly
-                ref="code"
                 title="click to copy"
                 :value="code"
-                v-b-tooltip:hover
+                @click="copy($event)"
+              >
+
+              <p class="mb-0">
+                <a
+                  href="#"
+                  @click.prevent="showQR = !showQR"
+                >Toggle QR-Code</a>
+              </p>
+
+              <p
+                v-if="showQR"
+                class="my-5"
+              >
+                <vue-qr
+                  :text="qrURL"
+                  :size="200"
+                  :dot-scale="1.0"
                 />
-
-                <p class="mb-0"><a href="#" @click.prevent="showQR = !showQR">Toggle QR-Code</a></p>
-
-                <p class="my-5" v-if="showQR"><vue-qr :text="qrURL" :size="200" :dotScale="1.0" /></p>
-            </b-card-text>
-
-            <b-progress
-              class="justify-content-center"
-              :max="30000"
-              slot="footer"
-              :value="timeLeft"
-              />
-
-          </b-card>
-
-          <b-card header="Set secret..." v-else>
-            <b-form-group label="Secret (Base32 encoded or plain):">
-              <b-form-input v-model="secret" trim></b-form-input>
-            </b-form-group>
-            <div class="text-right">
-              <b-btn @click="updateSecret" variant="success">Get code!</b-btn>
+              </p>
             </div>
-          </b-card>
 
-        </b-col>
-      </b-row>
-    </b-container>
+            <div class="card-footer">
+              <div
+                class="progress"
+                role="progressbar"
+                aria-label="Time remaining"
+                aria-valuemin="0"
+                aria-valuemax="30000"
+                :aria-valuenow="timeLeft"
+              >
+                <div
+                  class="progress-bar"
+                  :style="{ width: (timeLeft / 30000) * 100 + '%' }"
+                />
+              </div>
+            </div>
+          </div>
 
+          <div
+            v-else
+            class="card"
+          >
+            <div class="card-header">
+              Set secret...
+            </div>
+
+            <div class="card-body">
+              <div class="mb-3">
+                <label
+                  for="secret"
+                  class="form-label"
+                >Secret (Base32 encoded or plain):</label>
+
+                <input
+                  id="secret"
+                  v-model.trim="secret"
+                  class="form-control"
+                >
+              </div>
+
+              <div class="text-end">
+                <button
+                  type="button"
+                  class="btn btn-success"
+                  @click="updateSecret"
+                >
+                  Get code!
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
-<script>
-import otp from 'otp'
+<script lang="ts">
+import { markRaw } from 'vue'
+import { OTP } from 'otp'
+import Tooltip from 'bootstrap/js/dist/tooltip'
+import VueQr from 'vue-qr'
 
 export default {
-  name: 'app',
+  components: { VueQr },
 
   computed: {
-    qrURL() {
-      return otp({ secret: this.secret }).totpURL
+    qrURL(): string {
+      return this.otp?.totpURL || ''
     },
   },
 
   data() {
     return {
-      code: null,
-      secret: null,
+      code: null as string | null,
+      otp: null as OTP | null,
+      secret: null as string | null,
       showQR: false,
-      ticker: null,
+      ticker: null as number | null,
       timeLeft: 0,
     }
+  },
+
+  directives: {
+    tooltip: {
+      mounted(el: HTMLElement) {
+        new Tooltip(el, { trigger: 'hover' })
+      },
+
+      unmounted(el: HTMLElement) {
+        Tooltip.getInstance(el)?.dispose()
+      },
+    },
   },
 
   methods: {
@@ -85,9 +160,20 @@ export default {
       window.location.hash = ''
     },
 
-    copy(evt) {
-      evt.target.select()
-      document.execCommand("copy")
+    async copy(evt: PointerEvent) {
+      if (!this.code) {
+        return
+      }
+
+      if (evt.target instanceof HTMLInputElement) {
+        evt.target.select()
+      }
+
+      try {
+        await navigator.clipboard.writeText(this.code)
+      } catch (err) {
+        console.error('Failed to copy the code', err)
+      }
     },
 
     hashUpdate() {
@@ -96,13 +182,13 @@ export default {
         return
       }
 
-      this.secret = window.location.hash.substr(1)
-      this.updateCode()
+      this.secret = window.location.hash.substring(1)
+      this.updateSecret()
     },
 
-    updateCode() {
-      if (this.secret) {
-        this.code = otp({ secret: this.secret }).totp()
+    async updateCode() {
+      if (this.secret && this.otp) {
+        this.code = await this.otp.totp(new Date().getTime())
         this.timeLeft = 30000 - new Date().getTime() % 30000
       }
 
@@ -110,7 +196,12 @@ export default {
     },
 
     updateSecret() {
-      window.location.hash = this.secret
+      if (!this.secret) {
+        return
+      }
+
+      window.location.hash = this.secret!
+      this.otp = markRaw(OTP.parse(this.secret!))
       this.updateCode()
     },
   },
@@ -119,16 +210,17 @@ export default {
     this.hashUpdate()
     window.onhashchange = () => this.hashUpdate()
   },
+
+  name: 'WebTOTPApp',
 }
 </script>
 
 <style scoped>
 .code {
   background-color: transparent;
-  color: white;
+  color: inherit;
   cursor: pointer;
   font-size: 2.5em;
   letter-spacing: 0.5em;
 }
 </style>
-
