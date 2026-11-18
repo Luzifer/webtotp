@@ -1,4 +1,4 @@
-FROM golang:1.27-alpine AS gobuild
+FROM golang:1.27.4-alpine AS gobuild
 
 ENV GOBIN=/rootfs/usr/bin
 
