@@ -1,0 +1,25 @@
+name: Docker Publish
+
+on:
+  push: {}
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: git.luzifer.io
+  IMAGE: registry/webtotp
+
+jobs:
+  docker-publish:
+    defaults:
+      run:
+        shell: bash
+
+    runs-on: forgejo
+
+    steps:
+      - uses: luzifer/actions/docker-publish@477b5365d3a6b728808bbd4e75debdfed00b5746 # develop
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+          push: ${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v') }}
+          registry: ${{ env.REGISTRY }}
