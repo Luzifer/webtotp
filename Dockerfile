@@ -14,7 +14,7 @@ EOF
 
 FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS nodebuild
 
-COPY --from=ghcr.io/luzifer-docker/pnpm:v11.28.13@sha256:4e66f7400935a022ec40caf62525c312a085abda96c8e93a78d39e61be9ece27 / /
+COPY --from=ghcr.io/luzifer-docker/pnpm:v11.29.0@sha256:d7719dc796241f09f9f505eedd5b82ceed0fb0c24db3c0b211478985820c8a4d / /
 
 COPY . /src
 WORKDIR /src
