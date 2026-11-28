@@ -8,7 +8,7 @@ RUN <<-EOF
     git
 
   install -dm0755 ${GOBIN}
-  go install github.com/Luzifer/gziphttp@v0.1.5
+  go install github.com/Luzifer/gziphttp@v0.1.6
 EOF
 
 
